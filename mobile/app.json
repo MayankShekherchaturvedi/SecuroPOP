@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "SecuroPOP",
+    "slug": "securopop",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "platforms": [
+      "android"
+    ],
+    "android": {
+      "package": "com.securopop.app",
+      "versionCode": 1
+    }
+  }
+}
