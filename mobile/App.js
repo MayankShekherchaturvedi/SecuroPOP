@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AppHomeScreen from './src/screens/AppHomeScreen';
+import ApkStudioScreen from './src/screens/ApkStudioScreen';
 import SecurityStatusScreen from './src/screens/SecurityStatusScreen';
+import { PolicyProvider } from './src/context/PolicyContext';
 
 const TABS = [
   { id: 'home', label: 'App Home', Component: AppHomeScreen },
+  { id: 'studio', label: 'APK Studio', Component: ApkStudioScreen },
   { id: 'status', label: 'Security Status', Component: SecurityStatusScreen }
 ];
 
@@ -15,37 +18,39 @@ export default function App() {
   const ActiveScreen = currentTab.Component;
 
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar style="light" />
+    <PolicyProvider>
+      <SafeAreaView style={styles.root}>
+        <StatusBar style="light" />
 
-      <View style={styles.header}>
-        <Text style={styles.appTitle}>SecuroPOP</Text>
-        <Text style={styles.appSubtitle}>Android 14+ Protected Workspace</Text>
-      </View>
+        <View style={styles.header}>
+          <Text style={styles.appTitle}>SecuroPOP</Text>
+          <Text style={styles.appSubtitle}>Android 14+ Protected Workspace</Text>
+        </View>
 
-      <View style={styles.content}>
-        <ActiveScreen />
-      </View>
+        <View style={styles.content}>
+          <ActiveScreen />
+        </View>
 
-      <View style={styles.tabBar}>
-        {TABS.map((tab) => {
-          const isActive = tab.id === currentTab.id;
-          return (
-            <Pressable
-              key={tab.id}
-              style={[styles.tabButton, isActive && styles.tabButtonActive]}
-              onPress={() => setActiveTabId(tab.id)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isActive }}
-            >
-              <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </SafeAreaView>
+        <View style={styles.tabBar}>
+          {TABS.map((tab) => {
+            const isActive = tab.id === currentTab.id;
+            return (
+              <Pressable
+                key={tab.id}
+                style={[styles.tabButton, isActive && styles.tabButtonActive]}
+                onPress={() => setActiveTabId(tab.id)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isActive }}
+              >
+                <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </SafeAreaView>
+    </PolicyProvider>
   );
 }
 
