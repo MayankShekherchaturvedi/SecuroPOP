@@ -1,68 +1,52 @@
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
-
-const STATUS_BADGES = [
-  {
-    id: 'target-sdk',
-    label: 'Android 14+ Target',
-    badge: 'API 34+ Ready',
-    tone: 'info',
-    detail: 'Baseline configuration targeting Android 14+ security model.'
-  },
-  {
-    id: 'runtime-shield',
-    label: 'Runtime Integrity Shield',
-    badge: 'Placeholder',
-    tone: 'pending',
-    detail: 'Tamper and debugger checks will be wired in Days 2–4.'
-  },
-  {
-    id: 'policy-sync',
-    label: 'Policy Synchronization',
-    badge: 'Placeholder',
-    tone: 'pending',
-    detail: 'Server-driven enterprise policy enforcement pending.'
-  },
-  {
-    id: 'screen-guard',
-    label: 'Capture Protection',
-    badge: 'Placeholder',
-    tone: 'pending',
-    detail: 'FLAG_SECURE screenshot/recording policy badge placeholder.'
-  }
-];
+import { POLICY_OPTIONS, usePolicy } from '../context/PolicyContext';
 
 export default function SecurityStatusScreen() {
+  const { policy, enabledCount, totalCount } = usePolicy();
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.sectionTitle}>Security Status</Text>
         <Text style={styles.sectionSubtitle}>
-          SecuroPOP Android 14+ protection badges (Day 1 placeholders)
+          Active SecuroPOP policy configuration ({enabledCount}/{totalCount} enabled)
         </Text>
 
-        {STATUS_BADGES.map((item) => (
-          <View key={item.id} style={styles.badgeCard}>
-            <View style={styles.badgeHeader}>
-              <Text style={styles.badgeLabel}>{item.label}</Text>
-              <View
-                style={[
-                  styles.pill,
-                  item.tone === 'info' ? styles.pillInfo : styles.pillPending
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.pillText,
-                    item.tone === 'info' ? styles.pillTextInfo : styles.pillTextPending
-                  ]}
-                >
-                  {item.badge}
-                </Text>
-              </View>
+        <View style={styles.badgeCard}>
+          <View style={styles.badgeHeader}>
+            <Text style={styles.badgeLabel}>Android 14+ Target</Text>
+            <View style={[styles.pill, styles.pillInfo]}>
+              <Text style={[styles.pillText, styles.pillTextInfo]}>API 34+ Ready</Text>
             </View>
-            <Text style={styles.badgeDetail}>{item.detail}</Text>
           </View>
-        ))}
+          <Text style={styles.badgeDetail}>
+            Baseline configuration targeting the Android 14+ security model.
+          </Text>
+        </View>
+
+        {POLICY_OPTIONS.map((option) => {
+          const enabled = Boolean(policy[option.key]);
+          return (
+            <View key={option.key} style={styles.badgeCard}>
+              <View style={styles.badgeHeader}>
+                <Text style={styles.badgeLabel}>{option.label}</Text>
+                <View
+                  style={[styles.pill, enabled ? styles.pillActive : styles.pillPending]}
+                >
+                  <Text
+                    style={[
+                      styles.pillText,
+                      enabled ? styles.pillTextActive : styles.pillTextPending
+                    ]}
+                  >
+                    {enabled ? 'Enabled' : 'Disabled'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.badgeDetail}>{option.description}</Text>
+            </View>
+          );
+        })}
       </ScrollView>
     </SafeAreaView>
   );
@@ -117,6 +101,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(56, 189, 248, 0.14)',
     borderColor: 'rgba(56, 189, 248, 0.4)'
   },
+  pillActive: {
+    backgroundColor: 'rgba(34, 197, 94, 0.16)',
+    borderColor: 'rgba(34, 197, 94, 0.4)'
+  },
   pillPending: {
     backgroundColor: 'rgba(148, 163, 184, 0.14)',
     borderColor: '#475569'
@@ -127,6 +115,9 @@ const styles = StyleSheet.create({
   },
   pillTextInfo: {
     color: '#38bdf8'
+  },
+  pillTextActive: {
+    color: '#86efac'
   },
   pillTextPending: {
     color: '#cbd5e1'

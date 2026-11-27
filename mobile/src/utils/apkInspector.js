@@ -138,6 +138,92 @@ export async function inspectApkFile(asset) {
     sha256,
     validZipSignature,
     hasSigningBlockV2V3,
-    hasAndroidManifest
+    hasAndroidManifest,
+    readOnlyDclReady: null,
+    receiverPolicyReady: null
   };
+}
+
+export function getSampleApkProfile() {
+  const sampleSize = 14829568;
+  return {
+    source: 'sample',
+    fileName: 'corp-notes-android14-sample.apk',
+    sizeBytes: sampleSize,
+    formattedSize: formatBytes(sampleSize),
+    sha256: '4f8c9b2e1d7a6053c8e4b912d6f0a34b8c71e29d04a56f8e2b31c90a7d4e612f',
+    validZipSignature: true,
+    hasSigningBlockV2V3: true,
+    hasAndroidManifest: true,
+    readOnlyDclReady: true,
+    receiverPolicyReady: true
+  };
+}
+
+export function buildReadinessChecklist(inspection, enabledCount, totalCount) {
+  if (!inspection) {
+    return [];
+  }
+
+  const archiveStatus = !inspection.validZipSignature
+    ? 'fail'
+    : inspection.hasAndroidManifest
+      ? 'pass'
+      : 'warn';
+
+  const archiveDetail = !inspection.validZipSignature
+    ? 'Missing PK\\x03\\x04 ZIP header — file does not appear to be an APK.'
+    : inspection.hasAndroidManifest
+      ? 'Valid ZIP archive header and AndroidManifest.xml detected.'
+      : 'Valid ZIP header found, but AndroidManifest.xml was not detected in scanned range.';
+
+  const dclStatus = inspection.readOnlyDclReady === true ? 'pass' : 'warn';
+  const dclDetail =
+    inspection.readOnlyDclReady === true
+      ? 'Sample profile conforms to Android 14+ read-only DCL rules.'
+      : 'Verify any dynamically loaded DEX/JAR files call setReadOnly() before loading on Android 14+.';
+
+  const receiverStatus = inspection.receiverPolicyReady === true ? 'pass' : 'warn';
+  const receiverDetail =
+    inspection.receiverPolicyReady === true
+      ? 'Sample profile declares explicit RECEIVER_EXPORTED / NOT_EXPORTED flags.'
+      : 'Confirm runtime Context.registerReceiver() calls specify export flags for API 34+.';
+
+  const policyStatus =
+    enabledCount === totalCount ? 'pass' : enabledCount > 0 ? 'warn' : 'fail';
+
+  return [
+    {
+      id: 'archive-header',
+      title: 'APK / ZIP Container Integrity',
+      status: archiveStatus,
+      detail: archiveDetail
+    },
+    {
+      id: 'sig-v2-v3',
+      title: 'Signature Scheme v2 / v3 Block',
+      status: inspection.hasSigningBlockV2V3 ? 'pass' : 'warn',
+      detail: inspection.hasSigningBlockV2V3
+        ? 'APK Signing Block v2/v3 marker ("APK Sig Block 42") detected.'
+        : 'Signing Block v2/v3 marker not detected; Android 14+ rejects v1-only installs.'
+    },
+    {
+      id: 'dcl-readonly',
+      title: 'Read-Only DCL Readiness (Android 14+)',
+      status: dclStatus,
+      detail: dclDetail
+    },
+    {
+      id: 'exported-receiver',
+      title: 'Exported Receiver Policy (API 34+)',
+      status: receiverStatus,
+      detail: receiverDetail
+    },
+    {
+      id: 'securopop-policy',
+      title: 'SecuroPOP Wrapper Guardrails',
+      status: policyStatus,
+      detail: `${enabledCount} of ${totalCount} runtime protection toggles enabled.`
+    }
+  ];
 }

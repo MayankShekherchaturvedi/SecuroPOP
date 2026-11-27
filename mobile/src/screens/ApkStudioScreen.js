@@ -11,7 +11,17 @@ import {
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { POLICY_OPTIONS, usePolicy } from '../context/PolicyContext';
-import { inspectApkFile } from '../utils/apkInspector';
+import {
+  buildReadinessChecklist,
+  getSampleApkProfile,
+  inspectApkFile
+} from '../utils/apkInspector';
+
+const CHECKLIST_BADGE_MAP = {
+  pass: { label: 'PASS', pillStyle: 'badgePass', textStyle: 'badgePassText' },
+  warn: { label: 'REVIEW', pillStyle: 'badgeWarn', textStyle: 'badgeWarnText' },
+  fail: { label: 'FAIL', pillStyle: 'badgeFail', textStyle: 'badgeFailText' }
+};
 
 export default function ApkStudioScreen() {
   const { policy, isLoaded, togglePolicy, enabledCount, totalCount } = usePolicy();
@@ -41,6 +51,13 @@ export default function ApkStudioScreen() {
     }
   }
 
+  function handleLoadSample() {
+    setErrorMessage('');
+    setInspection(getSampleApkProfile());
+  }
+
+  const checklist = buildReadinessChecklist(inspection, enabledCount, totalCount);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -52,25 +69,42 @@ export default function ApkStudioScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>On-Device APK Inspector</Text>
           <Text style={styles.helperText}>
-            Pick a local `.apk` file to verify its ZIP/APK signature and SHA-256 hash.
+            Pick a local `.apk` file to verify its ZIP/APK signature and SHA-256 hash, or
+            load the sample profile for offline demos.
           </Text>
 
-          <Pressable
-            style={[styles.primaryButton, isInspecting && styles.buttonDisabled]}
-            onPress={handleSelectApk}
-            disabled={isInspecting}
-          >
-            {isInspecting ? (
-              <ActivityIndicator color="#0f172a" size="small" />
-            ) : (
-              <Text style={styles.primaryButtonText}>Select APK File</Text>
-            )}
-          </Pressable>
+          <View style={styles.buttonGroup}>
+            <Pressable
+              style={[styles.primaryButton, isInspecting && styles.buttonDisabled]}
+              onPress={handleSelectApk}
+              disabled={isInspecting}
+            >
+              {isInspecting ? (
+                <ActivityIndicator color="#0f172a" size="small" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Select APK File</Text>
+              )}
+            </Pressable>
+
+            <Pressable
+              style={styles.secondaryButton}
+              onPress={handleLoadSample}
+              disabled={isInspecting}
+            >
+              <Text style={styles.secondaryButtonText}>Load Sample APK Profile</Text>
+            </Pressable>
+          </View>
 
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
           {inspection ? (
             <View style={styles.resultBox}>
+              <View style={styles.resultRow}>
+                <Text style={styles.resultLabel}>Source</Text>
+                <Text style={styles.sourceTag}>
+                  {inspection.source === 'sample' ? 'Sample Demo Profile' : 'Device File'}
+                </Text>
+              </View>
               <View style={styles.resultRow}>
                 <Text style={styles.resultLabel}>File Name</Text>
                 <Text style={styles.resultValue}>{inspection.fileName}</Text>
@@ -81,14 +115,23 @@ export default function ApkStudioScreen() {
               </View>
               <View style={styles.resultRow}>
                 <Text style={styles.resultLabel}>APK/ZIP Signature</Text>
-                <Text
+                <View
                   style={[
-                    styles.signatureBadge,
+                    styles.statusPill,
                     inspection.validZipSignature ? styles.badgePass : styles.badgeFail
                   ]}
                 >
-                  {inspection.validZipSignature ? 'Valid PK Header' : 'Invalid Header'}
-                </Text>
+                  <Text
+                    style={[
+                      styles.statusPillText,
+                      inspection.validZipSignature
+                        ? styles.badgePassText
+                        : styles.badgeFailText
+                    ]}
+                  >
+                    {inspection.validZipSignature ? 'Valid PK Header' : 'Invalid Header'}
+                  </Text>
+                </View>
               </View>
               <View style={styles.hashBlock}>
                 <Text style={styles.resultLabel}>SHA-256 Digest</Text>
@@ -99,6 +142,32 @@ export default function ApkStudioScreen() {
             </View>
           ) : null}
         </View>
+
+        {checklist.length > 0 ? (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>Android 14+ Readiness Checklist</Text>
+              <Text style={styles.countBadge}>API 34+</Text>
+            </View>
+
+            {checklist.map((item) => {
+              const badge = CHECKLIST_BADGE_MAP[item.status] || CHECKLIST_BADGE_MAP.warn;
+              return (
+                <View key={item.id} style={styles.checklistRow}>
+                  <View style={styles.checklistTop}>
+                    <Text style={styles.checklistTitle}>{item.title}</Text>
+                    <View style={[styles.statusPill, styles[badge.pillStyle]]}>
+                      <Text style={[styles.statusPillText, styles[badge.textStyle]]}>
+                        {badge.label}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.checklistDetail}>{item.detail}</Text>
+                </View>
+              );
+            })}
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -173,10 +242,22 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     lineHeight: 18
   },
+  buttonGroup: {
+    gap: 8
+  },
   primaryButton: {
     backgroundColor: '#38bdf8',
     borderRadius: 8,
     paddingVertical: 11,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  secondaryButton: {
+    backgroundColor: '#0f172a',
+    borderColor: '#38bdf8',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -187,6 +268,11 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontWeight: '700',
     fontSize: 14
+  },
+  secondaryButtonText: {
+    color: '#38bdf8',
+    fontWeight: '600',
+    fontSize: 13
   },
   errorText: {
     fontSize: 12,
@@ -218,20 +304,36 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     textAlign: 'right'
   },
-  signatureBadge: {
+  sourceTag: {
     fontSize: 11,
     fontWeight: '700',
+    color: '#38bdf8'
+  },
+  statusPill: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 999,
-    overflow: 'hidden'
+    borderRadius: 999
+  },
+  statusPillText: {
+    fontSize: 11,
+    fontWeight: '700'
   },
   badgePass: {
-    backgroundColor: 'rgba(34, 197, 94, 0.16)',
+    backgroundColor: 'rgba(34, 197, 94, 0.16)'
+  },
+  badgePassText: {
     color: '#86efac'
   },
+  badgeWarn: {
+    backgroundColor: 'rgba(245, 158, 11, 0.16)'
+  },
+  badgeWarnText: {
+    color: '#fcd34d'
+  },
   badgeFail: {
-    backgroundColor: 'rgba(239, 68, 68, 0.16)',
+    backgroundColor: 'rgba(239, 68, 68, 0.16)'
+  },
+  badgeFailText: {
     color: '#fca5a5'
   },
   hashBlock: {
@@ -241,6 +343,29 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#cbd5e1',
     fontFamily: 'monospace'
+  },
+  checklistRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+    paddingTop: 10,
+    gap: 4
+  },
+  checklistTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8
+  },
+  checklistTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#f8fafc',
+    flex: 1
+  },
+  checklistDetail: {
+    fontSize: 12,
+    color: '#94a3b8',
+    lineHeight: 17
   },
   countBadge: {
     fontSize: 12,
